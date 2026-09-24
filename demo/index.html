@@ -1,0 +1,82 @@
+<!-- Created by Erion Nezha — © 2026 All rights reserved -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🅿️ Parking Management System — Web Port</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0f14;color:#e6e6e6;font-family:'Consolas','Courier New',monospace;min-height:100vh;display:flex;flex-direction:column}
+header.top{background:linear-gradient(135deg,#101820,#1b2a3a);padding:18px 20px;text-align:center;border-bottom:2px solid #00d4ff33}
+header.top h1{font-size:1.25rem;color:#fff}
+header.top p{color:#9fb3c8;font-size:.82rem;margin-top:6px}
+.wrap{flex:1;max-width:900px;width:100%;margin:0 auto;padding:18px;display:flex;flex-direction:column}
+.term{background:#05070b;border:1px solid #00d4ff33;border-radius:10px;padding:16px;height:60vh;overflow-y:auto;white-space:pre-wrap;font-size:.92rem;line-height:1.6;color:#c8ffb0}
+.inrow{display:flex;align-items:center;gap:8px;margin-top:10px;background:#05070b;border:1px solid #00d4ff55;border-radius:8px;padding:10px 14px}
+.inrow .prompt{color:#00d4ff;font-weight:700}
+.inrow input{flex:1;background:transparent;border:none;outline:none;color:#fff;font-family:inherit;font-size:.95rem}
+footer{text-align:center;padding:14px;color:#5c6b7f;font-size:.85rem;border-top:1px solid #ffffff10}
+footer strong{color:#9fb3c8}
+</style>
+</head>
+<body>
+<header class="top"><h1>🅿️ Parking Management System</h1><p>Web port of Parking.c — car/scooter parking with arrival, departure, fees and history.</p></header>
+<div class="wrap"><div class="term" id="term"></div>
+<div class="inrow"><span class="prompt">&rsaquo;</span><input id="inp" autocomplete="off" spellcheck="false" placeholder="Type here and press Enter…"></div></div>
+<footer>Krijuar nga <strong>Erion Nezha</strong> — © 2026</footer>
+<script>
+const termEl=document.getElementById('term'),inp=document.getElementById('inp');
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function print(t){termEl.innerHTML+=esc(t)+'\n';termEl.scrollTop=termEl.scrollHeight;}
+function ask(q){return new Promise(function(res){print(q);inp.focus();function h(e){if(e.key==='Enter'){inp.removeEventListener('keydown',h);var v=inp.value;inp.value='';print('> '+v);res(v.trim());}}inp.addEventListener('keydown',h);});}
+function pause(){return new Promise(function(r){setTimeout(r,250);});}
+window.addEventListener('load',function(){main();});
+
+var slots={}; // key: vehnum -> {type,row,col,t0}
+var history=[];
+function fee(type,ms){var h=ms/3600000;return type===1?Math.max(50,Math.ceil(h)*50):Math.max(20,Math.ceil(h)*20);}
+async function main(){
+  print('*** Parking Management System (web port of Parking.c) ***');
+  while(true){
+    print('\nCar Parking\n1. Arrival of a vehicle\n2. Total no. of vehicles parked\n3. Total no. of cars parked\n4. Total no. of scooters parked');
+    print('5. Display order in which vehicles are parked\n6. Departure of vehicle\n7. Check History\n8. Exit');
+    var c=await ask('\nEnter your choice: ');
+    if(c==='1'){
+      var t=await ask('Vehicle type (1=Car, 2=Scooter): ');
+      if(t!=='1'&&t!=='2'){print('Invalid type.');continue;}
+      var num=await ask('Enter vehicle number: ');
+      if(slots[num]){print('Vehicle already parked!');continue;}
+      var row=await ask('Enter row (0-1): '), col=await ask('Enter column (0-9): ');
+      slots[num]={type:parseInt(t,10),row:row,col:col,t0:Date.now()};
+      history.push({num:num,type:t,row:row,col:col,when:new Date().toLocaleString()});
+      print((t==='1'?'Car':'Scooter')+' '+num+' parked at row '+row+', column '+col+'.');
+    }else if(c==='2'){print('Total vehicles parked: '+Object.keys(slots).length);
+    }else if(c==='3'){print('Total cars parked: '+Object.values(slots).filter(function(v){return v.type===1;}).length);
+    }else if(c==='4'){print('Total scooters parked: '+Object.values(slots).filter(function(v){return v.type===2;}).length);
+    }else if(c==='5'){
+      var keys=Object.keys(slots);
+      if(!keys.length){print('No vehicles parked.');continue;}
+      print('Order of parking:');
+      keys.forEach(function(k,i){var v=slots[k];print((i+1)+'. '+k+' ('+(v.type===1?'Car':'Scooter')+', row '+v.row+', col '+v.col+')');});
+    }else if(c==='6'){
+      var num=await ask('Enter vehicle number for departure: ');
+      var v=slots[num];
+      if(!v){print('Vehicle not found!');continue;}
+      var ms=Date.now()-v.t0, s=Math.floor(ms/1000);
+      var h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+      print('You have parked your vehicle for '+h+'/'+m+'/'+sec);
+      print('Parking fee: Rs.'+fee(v.type,ms));
+      delete slots[num];
+      print('Vehicle '+num+' departed. Thank you!');
+    }else if(c==='7'){
+      if(!history.length){print('No history yet.');continue;}
+      print('Parking history:');
+      history.forEach(function(h,i){print((i+1)+'. '+h.num+' ('+(h.type==='1'?'Car':'Scooter')+') row '+h.row+' col '+h.col+' @ '+h.when);});
+    }else if(c==='8'){print('Exiting...');break;
+    }else{print('Invalid choice.');}
+  }
+}
+</script>
+</body>
+</html>
